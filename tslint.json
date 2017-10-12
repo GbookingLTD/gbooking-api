@@ -1,0 +1,49 @@
+{
+    "defaultSeverity": "error",
+    "extends": [
+      "tslint:recommended",
+      "tslint:latest",
+      "tslint-react",
+      "tslint-immutable",
+      "tslint-microsoft-contrib",
+      "tslint-config-airbnb"
+    ],
+    "jsRules": {
+  
+    },
+    "rules": {
+      "linebreak-style": [
+        false
+      ],
+      "variable-name": [true, "allow-pascal-case"],
+      "quotemark": [true, "single"],
+      "no-unused": true,
+  
+      // Microsofr Contrub rules
+      "import-name": false,
+      "no-any": false,
+      "typedef": [false],
+      "no-unsafe-any": false,
+      "react-tsx-curly-spacing": false,
+      "completed-docs": [false],
+      "jsx-no-lambda": false,
+      "react-this-binding-issue": false,
+  
+      // override tslint-react rules here
+      "jsx-wrap-multiline": false,
+      "no-multiline-string": false,
+      "jsx-alignment": false,
+      "jsx-no-multiline-js": false,
+      "no-relative-imports": false,
+      "no-default-export": false,
+      "jsx-boolean-value": false,
+      "max-line-length": [true, 120],
+      "underscore-consistent-invocation": false,
+      "no-require-imports": false,
+      "no-var-requires": false,
+      "no-increment-decrement": false,
+      "prefer-type-cast": false
+    },
+    "rulesDirectory": []
+  }
+  

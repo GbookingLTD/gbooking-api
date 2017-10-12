@@ -1,0 +1,31 @@
+{
+  "name": "gbooking-integration-api",
+  "version": "0.0.1",
+  "description": "It provides API for integration with GBooking",
+  "main": "index",
+  "keywords": [
+    "integration",
+    "API",
+    "gbooking",
+    "axios"
+  ],
+  "author": {
+    "name": "Alex Belets",
+    "email": "ab@gbooking.co"
+  },
+  "homepage": "https://github.com/GbookingLTD/gbooking-integration-api",
+  "bugs": {
+    "url": "https://github.com/GbookingLTD/gbooking-integration-ap/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/GbookingLTD/gbooking-integration-api.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.16.2",
+    "lodash": "^4.17.4",
+    "moment": "^2.19.1",
+    "widget-utils": "https://github.com/GbookingLTD/widget-utils"
+  }
+}
