@@ -1,2 +1,2 @@
-# gbooking-integration-api
-It provides API for integration with GBooking
+# gbooking-api
+It provides GBookingAPI
