@@ -3,7 +3,9 @@
  */
 import * as _ from 'lodash';
 import moment from 'moment';
-import { constants, getUTM, getSource } from 'src/common';
+// tslint:disable-next-line:no-import-side-effect
+import 'moment/locale/ru';
+import { constants, getUTM } from 'src/common';
 import { IBusinessProfile, IRequest, IResource, ITaxonomy } from 'src/interfaces';
 import { IPhoneData } from 'src/interfaces/client';
 import WidgetUtils from 'widget-utils';
@@ -19,6 +21,18 @@ export function createRequest<T>(methodName: string, params?: T): IRequest<T> {
     ...(params ? { params } : {}),
   };
 
+}
+
+export function createNetworkConfigRequest(networkId: string): IRequest<{}> {
+  return {
+    jsonrpc: '2.0',
+    id: ++idCounter,
+    cred: {},
+    method: 'business.get_network_data',
+    params: {
+      networkID: networkId,
+    },
+  };
 }
 
 export function createProfileRequest(networkId: string): IRequest<{}> {
@@ -45,7 +59,7 @@ export function createBusinessIdObject(businessId: string, withNetworks: boolean
   };
 }
 
-export function createCRACKRequestObject(businessId: string, resources: string[], fromFilter: Date, toFilter: Date) {
+export function createCRACRequestObject(businessId: string, resources: string[], fromFilter: Date, toFilter: Date) {
   return {
     resources,
     business: {
@@ -69,7 +83,7 @@ export function createCRUNCHRequestObject(
 ) {
   return {
     new_method: isUsingNewMethod,
-    proxy:false,
+    proxy: false,
     business: {
       id: businessId,
     },
@@ -105,10 +119,10 @@ export function createNewProfileObject(
       name,
       surname,
       email,
-      driverLicense,
-      fromSms : true,
+      fromSms: true,
       phone: [phone],
-      document_token: documentToken,
+      driverLicense: driverLicense ? driverLicense : undefined,
+      document_token: documentToken ? documentToken : undefined,
       skipEmailCheck: isUserLoggedInProfile,
       creatorProfileID: profileId,
       creatorProfileName: profileName,
@@ -143,7 +157,7 @@ export function createAppointmentConfirmObject(
     },
     appointment: {
       id: appointmentId,
-      source: getSource(),
+      source: constants.SOURCE,
     },
     utm: getUTM(),
   };
@@ -151,8 +165,8 @@ export function createAppointmentConfirmObject(
 
 const smsIntegrationNumberExtractor = (smsNumber, length) => {
   let smsIntegrationNumber = length > 0
-  ? smsNumber : '';
-  smsIntegrationNumber = smsIntegrationNumber.replace(/[\(\)+ .\-']+/g,'');
+    ? smsNumber : '';
+  smsIntegrationNumber = smsIntegrationNumber.replace(/[\(\)+ .\-']+/g, '');
   smsIntegrationNumber = smsIntegrationNumber.indexOf('+') === -1 ? `+${smsIntegrationNumber}` : smsIntegrationNumber;
 
   return smsIntegrationNumber;
@@ -179,7 +193,7 @@ export function createSendAppointmentDataObject(
 ) {
   const generalInfo = business.general_info;
   const widgetConfiguration = business.widget_configuration;
-  const hideAppointmentTime  = (widgetConfiguration && widgetConfiguration.calendarMode)
+  const hideAppointmentTime = (widgetConfiguration && widgetConfiguration.calendarMode)
     || (widgetConfiguration.skipTimeSelection && widgetConfiguration.skipTimeSelectionServiceIDs
       && widgetConfiguration.skipTimeSelectionServiceIDs.indexOf(`${currentService.id}`) >= 0);
 
@@ -209,9 +223,9 @@ export function createSendAppointmentDataObject(
 
   const emails = business.integration_data.notification.email.filter((n) => {
     return !n.trigger || n.trigger.indexOf('BUSINESS_NOTIFICATION') !== -1;
-    }).map((n) => {
-      return n.email;
-    });
+  }).map((n) => {
+    return n.email;
+  });
 
   let country;
   let lang;
@@ -225,7 +239,7 @@ export function createSendAppointmentDataObject(
 
   return {
     data: {
-      appointment:{
+      appointment: {
         hideAppointmentTime,
         backofficeID,
         hidePrice: business.id && (business.id === '4000000002178' || business.id === '4000000003095'),
@@ -246,7 +260,7 @@ export function createSendAppointmentDataObject(
         additionals: additionalFields,
         use_coupon: business.widget_configuration.useCoupon,
       },
-      user_info:{
+      user_info: {
         clientComment,
         business_internal_ids: [business.id],
         email: clientData.email,
@@ -257,20 +271,20 @@ export function createSendAppointmentDataObject(
         updateUserInfo: [
           clientData,
         ],
-        user_object:{
+        user_object: {
           first_name: name,
           last_name: surname,
           phone: clientPhone,
           email: profile ? clientData.email : undefined,
         },
       },
-      service_info:{
+      service_info: {
         service_id: currentService.id,
         service_object: additionalServices && additionalServices.length ?
           additionalServices.join(', ') : currentService.alias[langCode],
         service_decrease: currentService.capacity_decrease,
       },
-      worker_info:{
+      worker_info: {
         worker_id: resource.id,
         worker_object: {
           business_internal_id: business.id,
@@ -283,24 +297,24 @@ export function createSendAppointmentDataObject(
           taxonomy_terms: resource.taxonomies,
         },
       },
-      bussines_info:{
+      bussines_info: {
         bussines_id: business.id,
         bussines_object: {
           country,
           name: generalInfo.name,
-          msg_language:  lang,
+          msg_language: lang,
           currency: generalInfo.accepted_currency ? generalInfo.accepted_currency[0] : {},
           internal_id: business.id,
           timezone: (WidgetUtils.DateTime.businessTimezoneUtcOffset({ business }) / 60).toFixed(1),
-          integration_allowed:'1',
-          integration_info:{
+          integration_allowed: '1',
+          integration_info: {
             sms: smsIntegrationNumber,
             email: emails.join(','),
           },
         },
       },
       extra_fields: extraFieldValues,
-      app_source: getSource(),
+      app_source: constants.SOURCE,
     },
     request_type: 'add_event',
   };
@@ -327,25 +341,26 @@ export function createReserveObject(
   additionalServices?: ITaxonomy[],
   masterImportance: string = '',
 ) {
+
   return {
     hideAppointmentTime,
     source: discountProvider && discountProvider !== 'LOCAL' ? discountProvider :
-      getSource(),
+      constants.SOURCE,
     appointment: {
-      socialToken,
       masterImportance,
       start: dateTime.toUTCString(),
       referrer: '',
       price: {
-        amount,
         originalAmount,
         discount,
         discountType,
-        discountProvider,
         currency,
         additionalTaxonomyDiscount,
+        amount,
+        discountProvider: discountProvider ? discountProvider : undefined,
       },
       duration: totalDuration && totalDuration > 0 ? totalDuration : duration,
+      socialToken: socialToken ? socialToken : undefined,
     },
     utm: getUTM(),
     taxonomy: {
@@ -362,7 +377,7 @@ export function createReserveObject(
       id: service.id,
       alias: service.alias,
     }),
-    ) : [],
+    ) : undefined,
     order: orderID ? {
       id: orderID,
     } : undefined,
@@ -380,6 +395,47 @@ export function createFieldRequestObject(
     field: {
       active: true,
       modelType: 'APPOINTMENT',
+    },
+  };
+}
+
+export function createUserHistoryRequest(
+  networkId: string,
+  businessId: string,
+  clientId: string,
+) {
+  return {
+    network: {
+      id: networkId,
+    },
+    client: {
+      id: clientId,
+    },
+    pageSize: 999,
+    limit: 999,
+    skip: 0,
+    business: {
+      id: businessId,
+    },
+  };
+}
+
+export function createClientRequest(
+  clientId: string,
+) {
+  return {
+    client: {
+      id: clientId,
+    },
+  };
+}
+
+export function createResourcesWeightRequest(
+  networkId: string,
+) {
+  return {
+    network: {
+      id: networkId,
     },
   };
 }

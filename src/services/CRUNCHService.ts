@@ -9,7 +9,6 @@ export module CRUNCHService {
     export function getSlots(
         businessId: string,
         resources: string[],
-        allTaxonomyResources: string[],
         taxonomies: string[],
         requestedClients: number,
         modifyRequestObj: (obj: any) => any,
@@ -17,13 +16,14 @@ export module CRUNCHService {
         toFilter?: Date,
         isUsingNewMethod: boolean = false,
         isGT: boolean = false,
-        isNeedExtraRequestParameter: boolean = false,
+        // isNeedExtraRequestParameter: boolean = false,
       ): Promise<ICrunchResponse> {
 
       let gtTaxonomyExcludedResources: string[] = [];
       const isTaxonomyRequest = resources.length > 1;
-      const isNeedExtraRequest = isNeedExtraRequestParameter
-                                            && isTaxonomyRequest && resources.length === allTaxonomyResources.length;
+      const isNeedExtraRequest = false;
+      // const isNeedExtraRequest = isNeedExtraRequestParameter
+      //                                       && isTaxonomyRequest && resources.length === allTaxonomyResources.length;
       const method = `appointment.${
         isTaxonomyRequest ? 'get_busy_slots_for_taxonomies' : 'get_busy_slots_for_resources'
       }`;
@@ -40,8 +40,7 @@ export module CRUNCHService {
         ))))
                   .then(response => isGT && !isNeedExtraRequest ? getSlots(
                       businessId,
-                      allTaxonomyResources,
-                      allTaxonomyResources,
+                      resources,
                       taxonomies,
                       requestedClients,
                       modifyRequestObj,
@@ -49,12 +48,11 @@ export module CRUNCHService {
                       toFilter,
                       isUsingNewMethod,
                       isGT,
-                      false,
                   ).then((responseInner) => {
                     gtTaxonomyExcludedResources = responseInner.excludedResources;
 
                     return (response.data as IResponce<ICrunchResponse>).result;
-                  }) : (response.data as IResponce<ICrunchResponse>).result).then(
+                  }) : (response ? (response.data as IResponce<ICrunchResponse>).result : {} as any)).then(
                     (data: ICrunchResponse) => {
                       if (isGT && isTaxonomyRequest) {
                         data.excludedResources = gtTaxonomyExcludedResources;

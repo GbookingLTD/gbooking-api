@@ -5,8 +5,9 @@ import {
     createReserveObject,
     createSendAppointmentDataObject,
 } from 'src/axios';
-import { constants, getPhone, getReferer, getRefererHost, getSource } from 'src/common';
+import { constants, getPhone, getReferer, getRefererHost } from 'src/common';
 import {
+    IAppointmentData,
     IConfirmAppointmentResponce,
     IProfileResponce,
     IReserveSlotResponce,
@@ -14,7 +15,7 @@ import {
     IResponce,
     ITaxonomy,
 } from 'src/interfaces';
-import { IPhoneData } from 'src/interfaces/client';
+import { IMarkerProps, IPhoneData } from 'src/interfaces/client';
 
 /**
  * Service for creation of appointment, obtaining appointments and etc
@@ -62,8 +63,9 @@ export module AppointmentDataService {
         additionalServices,
         ))).then(response => response ? response.data
             : Promise.reject(
-        `Couldn't reserve slot for resource ${resourceId}, business ${businessId} and time: ${dateTime.toISOString()}`,
+                'AN ERROR OCCURED',
             ));
+    // `Couldn't reserve slot for resource ${resourceId}, business ${businessId} and time: ${dateTime.toISOString()}`,
     }
 
     export function confirmAppointment(
@@ -78,6 +80,11 @@ export module AppointmentDataService {
         autoConfirmByBusiness: boolean = false,
         skipCheckSpaceLeft: boolean = false,
     ): Promise<IResponce<IConfirmAppointmentResponce>>  {
+      const fixedPhone = clientPhone;
+      if (fixedPhone && typeof fixedPhone.country_code === 'object') {
+        fixedPhone.country_code = fixedPhone.country_code.code;
+      }
+
       return axios.post('', createRequest('appointment.client_confirm_appointment', createAppointmentConfirmObject(
           langCode,
           clientId,
@@ -86,12 +93,13 @@ export module AppointmentDataService {
           autoConfirmByBusiness,
           skipCheckSpaceLeft,
           GAClientID,
-          clientPhone,
+          fixedPhone,
           profileId,
           profileName,
         )))
         .then(response => response ? response.data
-        : Promise.reject(`No responce for confirmation of appointment for user ${JSON.stringify(clientPhone)}`));
+        : Promise.reject('AN ERROR OCCURED'));
+        // `No responce for confirmation of appointment for user ${JSON.stringify(clientPhone)}`)
     }
 
     export function sendAppointmentData(
@@ -105,8 +113,15 @@ export module AppointmentDataService {
         additionalFields,
         additionalServices,
         extraFieldValues,
-        selectedClinic,
+        selectedClinic: IMarkerProps,
     ): Promise<void> {
+      const phone = getPhone(clientData.sms_phone, selectedClinic);
+      const phoneData = {
+        country_code: (phone.country_code as any).code,
+        area_code: phone.area_code,
+        number: phone.number,
+      };
+
       return axios.post('/index.php', createSendAppointmentDataObject(
             langCode,
             businessData.business,
@@ -115,7 +130,7 @@ export module AppointmentDataService {
             appConfirmData.appointment.id,
             appConfirmData.appointment.start,
             clientData,
-            getPhone(clientData.sms_phone, selectedClinic),
+            phoneData,
             appConfirmData.appointment.price,
             totalPrice,
             additionalFields,
@@ -125,40 +140,80 @@ export module AppointmentDataService {
             extraFieldValues,
             null, // profile
           ),            {
-            baseURL: constants.DATA_SEND_URL,
+            baseURL: 'http//il.gbooking.ru',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           })
           .then(response => response ? response.data
-          : Promise.reject(`No responce for confirmation of appointment for user ${JSON.stringify(clientData)}`));
+          : Promise.reject('AN ERROR OCCURED'));
+          // `No responce for confirmation of appointment for user ${JSON.stringify(clientData)}`
     }
 
     export function updateAppointment(
-        appointmentData,
-        additionalFields,
-        extraFields,
-        resourceId,
-        notes,
+        appointmentData: IAppointmentData,
+        additionalFields: any[],
+        extraFields: any[],
+        resourceId: string,
+        businessId: string,
+        taxonomyId: string,
+        notes: string,
     ) {
+      appointmentData.notes = notes;
+
       return axios.post('', createRequest('appointment.update_appointment', {
         additionalFields,
         extraFields,
         resourceId,
-        notes,
         appointment: appointmentData,
+        taxonomy: {
+          id: taxonomyId,
+        },
+        resource: {
+          id: resourceId,
+        },
+        business: {
+          id: businessId,
+        },
         skipChecks: true,
       }))
       .then(response => response ? response.data
-      : Promise.reject(`No pesponce. Cant update appointment for ${JSON.stringify(appointmentData)}`));
+      : Promise.reject('AN ERROR OCCURED'));
+      // `No pesponce. Cant update appointment for ${JSON.stringify(appointmentData)}`
     }
 
-    export function statOrder(businessId, appointmentId) {
+    export function statOrder(businessId: string, appointmentId: string) {
       return axios.post('', createRequest('stat.count', {
         business: { id : businessId },
-        source: getSource(),
+        source: constants.SOURCE,
         event : 'ORDER',
         appointment: { id : appointmentId },
-        referer: getRefererHost(),
-        fullReferer: getReferer(),
+        referer: getRefererHost(true),
+        fullReferer: getReferer(true),
       }));
+    }
+
+    export function clearResevedSlot(businessId: string, appointmentId: string) {
+      return axios.post('', createRequest('appointment.client_remove_empty_appointment', {
+        appointment: {
+          id: appointmentId,
+        },
+        business: {
+          id: businessId,
+        },
+      }))
+        .then(response => response ? response.data
+        : Promise.reject('AN ERROR OCCURED'));
+    }
+
+    export function cancelAppointment(appointmentId: string, clientId: string) {
+      return axios.post('', createRequest('appointment.cancel_appointment_by_client', {
+        appointment: {
+          id: appointmentId,
+        },
+        client: {
+          clientID: clientId,
+        },
+      }))
+        .then(response => response ? response.data
+        : Promise.reject('AN ERROR OCCURED'));
     }
 }
