@@ -5,6 +5,8 @@
 import { axios, createCRUNCHRequestObject, createRequest } from 'src/axios';
 import { ICrunchResponse, IResponce } from 'src/interfaces';
 
+const FETCH_SLOTS_RANGE_IN_DAYS = 7;
+
 export module CRUNCHService {
     export function getSlots(
         businessId: string,
@@ -27,7 +29,9 @@ export module CRUNCHService {
       const method = `appointment.${
         isTaxonomyRequest ? 'get_busy_slots_for_taxonomies' : 'get_busy_slots_for_resources'
       }`;
-      const toFilterSafe = toFilter ? toFilter : (new Date((new Date()).setDate(fromFilter.getDate() + 7)));
+      const toFilterSafe = toFilter
+        ? toFilter
+        : (new Date((new Date()).setDate(fromFilter.getDate() + FETCH_SLOTS_RANGE_IN_DAYS)));
 
       return axios.post('', createRequest(method, modifyRequestObj(createCRUNCHRequestObject(
           businessId,

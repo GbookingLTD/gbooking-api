@@ -1,4 +1,6 @@
+import { IResoureFreeAvailable } from 'src/interfaces/client';
 import { ISlotSplittedResponce } from 'src/interfaces/integration';
+
 /**
  * ISplittedResponce is a CRAC's responce for requested splitted resources schedule
  *
@@ -43,4 +45,8 @@ import { ISlotSplittedResponce } from 'src/interfaces/integration';
 
 export interface ICracSplittedResponce {
   slots: ISlotSplittedResponce[];
+}
+
+export interface ICracFirstAvailableResponce {
+  Free: IResoureFreeAvailable[];
 }

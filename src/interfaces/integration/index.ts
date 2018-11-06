@@ -64,3 +64,6 @@ export * from './INetworkConfigResponce';
 export * from './IBusinessEntry';
 export * from './IWeightResponce';
 export * from './IClientResponce';
+export * from './IDiscountResponce';
+export * from './ICracSlotResponce';
+export * from './ICracResourceResponce';

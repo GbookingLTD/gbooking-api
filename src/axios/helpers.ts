@@ -7,7 +7,7 @@ import moment from 'moment';
 import 'moment/locale/ru';
 import { constants, getUTM } from 'src/common';
 import { IBusinessProfile, IRequest, IResource, ITaxonomy } from 'src/interfaces';
-import { IPhoneData } from 'src/interfaces/client';
+import { IPhoneData, IResourceProps } from 'src/interfaces/client';
 import WidgetUtils from 'widget-utils';
 
 let idCounter = 0;
@@ -59,19 +59,68 @@ export function createBusinessIdObject(businessId: string, withNetworks: boolean
   };
 }
 
-export function createCRACRequestObject(businessId: string, resources: string[], fromFilter: Date, toFilter: Date) {
+export function createBusinessListObject(businessList: string[]) {
   return {
-    resources,
+    use_optimized_cache: true,
+    use_raw_data: true,
     business: {
-      id: businessId,
-    },
-    filters: {
-      from: fromFilter.toISOString(),
-      to: toFilter.toISOString(),
+      list: businessList,
     },
   };
 }
 
+export function createCRACRequestObject(businessId: string, resources: string[],
+                                        taxonomies: string[], fromFilter: Date, toFilter: Date) {
+  return {
+    business: {
+      id: businessId,
+    },
+    filters: {
+      resources,
+      taxonomies,
+      date:{
+        from: fromFilter.toISOString(),
+        to: toFilter.toISOString(),
+      },
+      rooms: [],
+    },
+  };
+}
+
+export function createCRACDistributedRequestObject(businessId: string, resourceList: IResourceProps[],
+                                                   taxonomies: string[], fromFilter: Date, toFilter: Date) {
+  return {
+    business: {
+      id: businessId,
+    },
+    filters: {
+      taxonomies,
+      resources: resourceList.map(r => mapDistributedResToCrac(r, taxonomies)),
+      date:{
+        from: fromFilter.toISOString(),
+        to: toFilter.toISOString(),
+      },
+      rooms: [],
+    },
+  };
+}
+
+export function mapDistributedResToCrac(resource: IResourceProps, taxonomies: string[]) {
+  return {
+    taxonomies,
+    resource: resource.id,
+    business: {
+      id: resource.businessId,
+    },
+  };
+}
+
+export function createCRACRequestFirstAvailableObject(resources: string[], duration: number) {
+  return {
+    resources,
+    duration,
+  };
+}
 export function createCRUNCHRequestObject(
   businessId: string,
   resources: string[],
@@ -110,6 +159,8 @@ export function createNewProfileObject(
   isUserLoggedInProfile: boolean = false,
   profileId?: string,
   profileName?: string,
+  gender?: string,
+  birthday?: string,
 ) {
   return {
     business: {
@@ -118,11 +169,13 @@ export function createNewProfileObject(
     client: {
       name,
       surname,
-      email,
+      email: [email],
       fromSms: true,
       phone: [phone],
       driverLicense: driverLicense ? driverLicense : undefined,
       document_token: documentToken ? documentToken : undefined,
+      birthday: birthday ? birthday : undefined,
+      sex: gender ? gender : undefined,
       skipEmailCheck: isUserLoggedInProfile,
       creatorProfileID: profileId,
       creatorProfileName: profileName,
@@ -130,7 +183,41 @@ export function createNewProfileObject(
     skipEmailCheck: isUserLoggedInProfile,
   };
 }
-
+export function createUpdateProfileObject(
+  id: string,
+  phone: IPhoneData,
+  businessId: string,
+  name: string = '',
+  surname: string = '',
+  email: string = '',
+  documentToken: string = '',
+  driverLicense: string = '',
+  isUserLoggedInProfile: boolean = false,
+  profileId?: string,
+  profileName?: string,
+  gender?: string,
+  birthday?: string,
+) {
+  return {
+    business: {
+      id: businessId,
+    },
+    client: {
+      id,
+      name,
+      surname,
+      email: [email],
+      phone: [phone],
+      driverLicense: driverLicense ? driverLicense : undefined,
+      document_token: documentToken ? documentToken : undefined,
+      skipEmailCheck: isUserLoggedInProfile,
+      creatorProfileID: profileId,
+      creatorProfileName: profileName,
+      birthday: birthday ? birthday : undefined,
+      sex: gender ? gender : undefined,
+    },
+  };
+}
 export function createAppointmentConfirmObject(
   langCode: string,
   clientId: string,
@@ -156,8 +243,8 @@ export function createAppointmentConfirmObject(
       creatorProfileName: profileName,
     },
     appointment: {
-      id: appointmentId,
       source: constants.SOURCE,
+      id: appointmentId,
     },
     utm: getUTM(),
   };
@@ -172,10 +259,10 @@ const smsIntegrationNumberExtractor = (smsNumber, length) => {
   return smsIntegrationNumber;
 };
 
-// tslint:disable-next-line:max-func-body-length
+// tslint:disable-next-line:max-func-body-length cyclomatic-complexity
 export function createSendAppointmentDataObject(
   langCode: string,
-  business: IBusinessProfile,
+  business: IBusinessProfile | undefined,
   resource: IResource,
   currentService: ITaxonomy,
   appointmentId,
@@ -191,10 +278,10 @@ export function createSendAppointmentDataObject(
   extraFieldValues,
   profile,
 ) {
-  const generalInfo = business.general_info;
-  const widgetConfiguration = business.widget_configuration;
+  const generalInfo = business ? business.general_info : undefined;
+  const widgetConfiguration = business ? business.widget_configuration : undefined;
   const hideAppointmentTime = (widgetConfiguration && widgetConfiguration.calendarMode)
-    || (widgetConfiguration.skipTimeSelection && widgetConfiguration.skipTimeSelectionServiceIDs
+    || (widgetConfiguration && widgetConfiguration.skipTimeSelection && widgetConfiguration.skipTimeSelectionServiceIDs
       && widgetConfiguration.skipTimeSelectionServiceIDs.indexOf(`${currentService.id}`) >= 0);
 
   const endDate = moment(appointmentStartTime).add(currentService.duration, 'minutes').toISOString();
@@ -207,7 +294,7 @@ export function createSendAppointmentDataObject(
 
   let name;
   let surname;
-  if (widgetConfiguration.splitName) {
+  if (widgetConfiguration && widgetConfiguration.splitName) {
     name = clientData.client.name;
     surname = clientData.client.surname;
   } else {
@@ -217,22 +304,22 @@ export function createSendAppointmentDataObject(
   }
 
   const smsIntegrationNumber = smsIntegrationNumberExtractor(
-    business.integration_data.notification.sms.length,
-    business.integration_data.notification.sms[0].number,
+    business ? business.integration_data.notification.sms.length : 0,
+    business ? business.integration_data.notification.sms[0].number : '',
   );
 
-  const emails = business.integration_data.notification.email.filter((n) => {
+  const emails = business ? business.integration_data.notification.email.filter((n) => {
     return !n.trigger || n.trigger.indexOf('BUSINESS_NOTIFICATION') !== -1;
   }).map((n) => {
     return n.email;
-  });
+  }) : [];
 
   let country;
   let lang;
-  if (business.group === 'LATVIAN') {
+  if (business && business.group === 'LATVIAN') {
     country = 'LV';
     lang = 'lv-lv';
-  } else if (generalInfo.address && generalInfo.address.length && generalInfo.address[0].country) {
+  } else if (generalInfo && generalInfo.address && generalInfo.address.length && generalInfo.address[0].country) {
     country = generalInfo.address[0].country;
     lang = generalInfo.language;
   }
@@ -242,10 +329,10 @@ export function createSendAppointmentDataObject(
       appointment: {
         hideAppointmentTime,
         backofficeID,
-        hidePrice: business.id && (business.id === '4000000002178' || business.id === '4000000003095'),
+        hidePrice: business && business.id && (business.id === '4000000002178' || business.id === '4000000003095'),
         appointment_id: appointmentId,
-        business_id: business.id,
-        business_internal_id: business.id,
+        business_id: business ? business.id : '',
+        business_internal_id: business ? business.id : '',
         client_id: clientData.client.id,
         from_time: moment(appointmentStartTime).toISOString(),
         price: actualPrice.amount || actualPrice.originalAmount,
@@ -258,11 +345,11 @@ export function createSendAppointmentDataObject(
         till_time: endDate,
         worker_internal_id: resource.id,
         additionals: additionalFields,
-        use_coupon: business.widget_configuration.useCoupon,
+        use_coupon: business && business.widget_configuration ? business.widget_configuration.useCoupon : false,
       },
       user_info: {
         clientComment,
-        business_internal_ids: [business.id],
+        business_internal_ids: business ? [business.id] : [],
         email: clientData.email,
         first_name: clientData.client.name,
         internal_id: clientData.client.id,
@@ -287,7 +374,7 @@ export function createSendAppointmentDataObject(
       worker_info: {
         worker_id: resource.id,
         worker_object: {
-          business_internal_id: business.id,
+          business_internal_id: business ? business.id : undefined,
           email: resource.email,
           icon_url: resource.icon_url,
           internal_id: resource.id,
@@ -298,14 +385,15 @@ export function createSendAppointmentDataObject(
         },
       },
       bussines_info: {
-        bussines_id: business.id,
+        bussines_id: business ? business.id : undefined,
         bussines_object: {
           country,
-          name: generalInfo.name,
+          name: generalInfo ? generalInfo.name : '',
           msg_language: lang,
-          currency: generalInfo.accepted_currency ? generalInfo.accepted_currency[0] : {},
-          internal_id: business.id,
-          timezone: (WidgetUtils.DateTime.businessTimezoneUtcOffset({ business }) / 60).toFixed(1),
+          currency: generalInfo && generalInfo.accepted_currency ? generalInfo.accepted_currency[0] : {},
+          internal_id: business ? business.id : undefined,
+          timezone: business && business.general_info ?
+            (WidgetUtils.DateTime.businessTimezoneUtcOffset({ business }) / 60).toFixed(1) : undefined,
           integration_allowed: '1',
           integration_info: {
             sms: smsIntegrationNumber,
@@ -333,7 +421,7 @@ export function createReserveObject(
   duration: number,
   businessId: string,
   serviceId: string,
-  resourceId: string,
+  resources: IResourceProps[],
   totalDuration?: number,
   orderID?: string,
   cabinetID?: string,
@@ -345,7 +433,7 @@ export function createReserveObject(
   return {
     hideAppointmentTime,
     source: discountProvider && discountProvider !== 'LOCAL' ? discountProvider :
-      constants.SOURCE,
+    constants.SOURCE,
     appointment: {
       masterImportance,
       start: dateTime.toUTCString(),
@@ -367,7 +455,7 @@ export function createReserveObject(
       id: serviceId,
     },
     resource: {
-      id: resourceId,
+      id: resources.map(r => r.businessId),
     },
     business: {
       id: businessId,
@@ -384,6 +472,7 @@ export function createReserveObject(
     cabinet: cabinetID ? {
       id: cabinetID,
     } : undefined,
+    originBusinessID: resources[0].businessId,
   };
 }
 
@@ -399,24 +488,61 @@ export function createFieldRequestObject(
   };
 }
 
-export function createUserHistoryRequest(
-  networkId: string,
-  businessId: string,
-  clientId: string,
+export function createFieldRequestListObject(
+  businessList: string[],
 ) {
   return {
-    network: {
-      id: networkId,
+    business: { list: businessList },
+    field: {
+      active: true,
+      modelType: 'APPOINTMENT',
     },
+  };
+}
+
+export function createDiscountRequestObject(
+  businessId: string,
+) {
+  return {
+    business: { id: businessId },
+  };
+}
+
+export function createDiscountExceptionsRequestObject(
+  data: any,
+) {
+  return {
+    business: { id: data.business.id },
+    start: data.start,
+    end: data.end,
+  };
+}
+
+
+export function createUserHistoryRequest(
+  clientId: string,
+  business: string,
+  networkId: string = '',
+) {
+  const params: any = {};
+  params.business = {
+    id: business,
+  };
+
+  if (networkId) {
+    params.network = {
+      id: networkId,
+    };
+  }
+
+  return {
     client: {
       id: clientId,
     },
     pageSize: 999,
     limit: 999,
     skip: 0,
-    business: {
-      id: businessId,
-    },
+    ...params,
   };
 }
 
@@ -426,6 +552,26 @@ export function createClientRequest(
   return {
     client: {
       id: clientId,
+    },
+  };
+}
+
+export function addClientRequest(
+  businessId: string,
+  countryCode: string,
+  areaCode: string,
+  phoneNumber: string,
+) {
+  return {
+    business: {
+      id: businessId,
+    },
+    client: {
+      phone: [{
+        number: phoneNumber,
+        country_code: countryCode,
+        area_code: areaCode,
+      }],
     },
   };
 }

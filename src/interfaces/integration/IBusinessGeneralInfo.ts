@@ -30,4 +30,5 @@ export interface IBusinessGeneralInfo {
   showResourceWorkStatistics?: boolean;
   showWorkerProfession?: boolean;
   verticalTranslation?: string;
+  isShowcase: boolean;
 }

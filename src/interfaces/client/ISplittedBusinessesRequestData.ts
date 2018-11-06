@@ -5,4 +5,5 @@
 export interface ISplittedBusinessesRequestData {
   businessId: string;
   resources: string[];
+  taxonomies: string[];
 }

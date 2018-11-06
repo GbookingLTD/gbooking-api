@@ -1,4 +1,4 @@
-import { ISlotResponce } from 'src/interfaces/integration';
+import { ICracSlotResponce } from 'src/interfaces/integration';
 /**
  * ICracResponce is a CRAC's responce for requested resources schedule
  *
@@ -23,5 +23,5 @@ import { ISlotResponce } from 'src/interfaces/integration';
  */
 
 export interface ICracResponce {
-  slots: ISlotResponce[];
+  slots: ICracSlotResponce[];
 }
